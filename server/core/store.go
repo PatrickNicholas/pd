@@ -423,6 +423,11 @@ func (s *StoreInfo) GetLabelValue(key string) string {
 	return ""
 }
 
+// GetLabelMatch returns whether given label finds a match.
+func (s *StoreInfo) GetLabelMatch(label *metapb.StoreLabel) bool {
+	return s.GetLabelValue(label.Key) == label.Value
+}
+
 // CompareLocation compares 2 stores' labels and returns at which level their
 // locations are different. It returns -1 if they are at the same location.
 func (s *StoreInfo) CompareLocation(other *StoreInfo, labels []string) int {

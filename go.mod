@@ -52,6 +52,7 @@ require (
 )
 
 replace (
+	github.com/pingcap/kvproto v0.0.0-20210112051026-540f4cb76c1c => ../../pingcap/kvproto
 	github.com/sirupsen/logrus => github.com/sirupsen/logrus v1.2.0
 	go.etcd.io/bbolt => go.etcd.io/bbolt v1.3.5
 )
