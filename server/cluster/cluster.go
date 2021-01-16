@@ -597,6 +597,10 @@ func (c *RaftCluster) processRegionHeartbeat(region *core.RegionInfo) error {
 			saveKV, saveCache = true, true
 		}
 
+		if region.GetPreferredLeaderLabel() != origin.GetPreferredLeaderLabel() {
+			saveCache = true
+		}
+
 		if region.GetApproximateSize() != origin.GetApproximateSize() ||
 			region.GetApproximateKeys() != origin.GetApproximateKeys() {
 			saveCache = true
