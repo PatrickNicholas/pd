@@ -135,6 +135,7 @@ func (l *balanceLeaderScheduler) Schedule(cluster opt.Cluster) []*operator.Opera
 
 	leaderSchedulePolicy := l.opController.GetLeaderSchedulePolicy()
 	stores := cluster.GetStores()
+	var ops []*operator.Operator
 	for _, store := range stores {
 		for _, region := range cluster.GetStoreRegions(store.GetID()) {
 			// Schedule leader transfer when labeled regions were detected.
@@ -145,7 +146,7 @@ func (l *balanceLeaderScheduler) Schedule(cluster opt.Cluster) []*operator.Opera
 						log.Info("Creating a leader transfer operator for the matching label",
 							zap.String("label-key", preferredLabel.Key),
 							zap.String("label-value", preferredLabel.Value))
-						return l.createOperator(cluster, region, cluster.GetLeaderStore(region), followerStore)
+						ops = append(ops, l.createOperatorWithoutHotCheck(cluster, region, cluster.GetLeaderStore(region), followerStore, false)...)
 					} else {
 						log.Debug("Fail to get a leader transfer operator since label wasn't matched",
 							zap.String("label-key", preferredLabel.Key),
@@ -157,6 +158,9 @@ func (l *balanceLeaderScheduler) Schedule(cluster opt.Cluster) []*operator.Opera
 		}
 	}
 
+	if len(ops) > 0 {
+		return opts
+	}
 
 	sources := filter.SelectSourceStores(stores, l.filters, cluster.GetOpts())
 	targets := filter.SelectTargetStores(stores, l.filters, cluster.GetOpts())
@@ -292,15 +296,23 @@ func (l *balanceLeaderScheduler) createOperator(cluster opt.Cluster, region *cor
 		return nil
 	}
 
+	return l.createOperatorWithoutHotCheck(cluster, region, source, target, true)
+}
+
+func (l *balanceLeaderScheduler) createOperatorWithoutHotCheck(cluster opt.Cluster, region *core.RegionInfo, source, target *core.StoreInfo, checkBalance bool) []*operator.Operator {
 	sourceID := source.GetID()
 	targetID := target.GetID()
 
 	opInfluence := l.opController.GetOpInfluence(cluster)
 	kind := core.NewScheduleKind(core.LeaderKind, cluster.GetOpts().GetLeaderSchedulePolicy())
-	shouldBalance, sourceScore, targetScore := shouldBalance(cluster, source, target, region, kind, opInfluence, l.GetName())
-	if !shouldBalance {
-		schedulerCounter.WithLabelValues(l.GetName(), "skip").Inc()
-		return nil
+	sourceScore, targetScore := 0.0, 0.0
+	if checkBalance {
+		shouldBalance := false
+		shouldBalance, sourceScore, targetScore = shouldBalance(cluster, source, target, region, kind, opInfluence, l.GetName())
+		if !shouldBalance {
+			schedulerCounter.WithLabelValues(l.GetName(), "skip").Inc()
+			return nil
+		}
 	}
 
 	op, err := operator.CreateTransferLeaderOperator(BalanceLeaderType, cluster, region, region.GetLeader().GetStoreId(), targetID, operator.OpLeader)
