@@ -38,6 +38,7 @@ type Cluster interface {
 	statistics.RegionStatInformer
 	statistics.StoreStatInformer
 
+	GetStoreRegions(storeID uint64) []*core.RegionInfo
 	GetOpts() *config.PersistOptions
 	AllocID() (uint64, error)
 	FitRegion(*core.RegionInfo) *placement.RegionFit

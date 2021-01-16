@@ -136,21 +136,22 @@ func (l *balanceLeaderScheduler) Schedule(cluster opt.Cluster) []*operator.Opera
 	leaderSchedulePolicy := l.opController.GetLeaderSchedulePolicy()
 	stores := cluster.GetStores()
 	for _, store := range stores {
-		region := cluster.GetRegion(store.GetID())
-		// Schedule leader transfer when labeled regions were detected.
-		if preferredLabel := region.GetPreferredLeaderLabel(); preferredLabel != nil {
-			followerStores := cluster.GetFollowerStores(region)
-			for _, followerStore := range followerStores {
-				if followerStore.GetLabelMatch(preferredLabel) {
-					log.Info("Creating a leader transfer operator for the matching label",
-						zap.String("label-key", preferredLabel.Key),
-						zap.String("label-value", preferredLabel.Value))
-					return l.createOperator(cluster, region, cluster.GetLeaderStore(region), followerStore)
-				} else {
-					log.Debug("Fail to get a leader transfer operator since label wasn't matched",
-						zap.String("label-key", preferredLabel.Key),
-						zap.String("label-value", preferredLabel.Value),
-						zap.Any("follower-labels", followerStore.GetLabels()))
+		for _, region := range cluster.GetStoreRegions(store.GetID()) {
+			// Schedule leader transfer when labeled regions were detected.
+			if preferredLabel := region.GetPreferredLeaderLabel(); preferredLabel != nil {
+				followerStores := cluster.GetFollowerStores(region)
+				for _, followerStore := range followerStores {
+					if followerStore.GetLabelMatch(preferredLabel) {
+						log.Info("Creating a leader transfer operator for the matching label",
+							zap.String("label-key", preferredLabel.Key),
+							zap.String("label-value", preferredLabel.Value))
+						return l.createOperator(cluster, region, cluster.GetLeaderStore(region), followerStore)
+					} else {
+						log.Debug("Fail to get a leader transfer operator since label wasn't matched",
+							zap.String("label-key", preferredLabel.Key),
+							zap.String("label-value", preferredLabel.Value),
+							zap.Any("follower-labels", followerStore.GetLabels()))
+					}
 				}
 			}
 		}
