@@ -157,6 +157,35 @@ func (s *testRegionInfoSuite) TestSortedEqual(c *C) {
 	}
 }
 
+func (s *testRegionInfoSuite) TestCorrectRegionApproximateSize(c *C) {
+	// size in MB
+	testcases := []struct {
+		originExists bool
+		originSize   uint64
+		size         uint64
+		expect       uint64
+	}{
+		{false, 0, 0, 1},
+		{false, 0, 2, 2},
+		{true, 0, 2, 2},
+		{true, 1, 2, 2},
+		{true, 2, 0, 2},
+	}
+	for _, t := range testcases {
+		var origin *RegionInfo
+		if t.originExists {
+			origin = NewRegionInfo(&metapb.Region{Id: 100}, nil)
+			origin.approximateSize = int64(t.originSize)
+		}
+		r := NewRegionInfo(&metapb.Region{Id: 100}, nil)
+		r.approximateSize = int64(t.size)
+		fmt.Printf("before %d\n", r.approximateSize)
+		r.CorrectApproximateSize(origin)
+		fmt.Printf("after %d\n", r.approximateSize)
+		c.Assert(r.approximateSize, Equals, int64(t.expect))
+	}
+}
+
 func (s *testRegionInfoSuite) TestRegionRoundingFlow(c *C) {
 	testcases := []struct {
 		flow   uint64
